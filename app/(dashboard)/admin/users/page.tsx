@@ -1,4 +1,20 @@
-export default function UsersPage() {
+import { Suspense } from "react";
+
+import {
+  UserList,
+} from "@/features/users/components/user-list";
+
+export const instant = false;
+
+type Props = {
+  searchParams: Promise<
+    Record<string, string | string[] | undefined>
+  >;
+};
+
+export default function UsersPage({
+  searchParams,
+}: Props) {
   return (
     <div className="space-y-4">
       <div>
@@ -11,11 +27,15 @@ export default function UsersPage() {
         </p>
       </div>
 
-      <div className="rounded-lg border bg-card p-6">
-        <p className="text-sm text-muted-foreground">
-          用户列表将在这里展示。
-        </p>
-      </div>
+      <Suspense
+        fallback={
+          <div className="rounded-lg border bg-card p-6">
+            正在加载用户列表...
+          </div>
+        }
+      >
+        <UserList searchParams={searchParams} />
+      </Suspense>
     </div>
   );
 }
