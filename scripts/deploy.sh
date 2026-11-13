@@ -1,4 +1,3 @@
-
 #!/usr/bin/env bash
 
 # 遇到错误立即退出
@@ -13,6 +12,12 @@ set -Eeuo pipefail
 APP_DIR="/var/www/english-teaching-platform"
 BRANCH="main"
 SERVICE_NAME="english-teaching-platform"
+HEALTH_URL="http://127.0.0.1:3000/admin/users"
+
+# 拉取代码最大重试次数（国内服务器访问 GitHub 不稳定）
+PULL_RETRIES=5
+# 等待服务就绪的最大检查次数（每次间隔 2 秒）
+HEALTH_RETRIES=30
 
 echo "======================================"
 echo "开始部署英语教学平台"
@@ -27,7 +32,19 @@ cd "$APP_DIR"
 echo ""
 echo "[1/6] 拉取最新代码"
 
-git -c http.version=HTTP/1.1 pull --ff-only origin "$BRANCH"
+for i in $(seq 1 "$PULL_RETRIES"); do
+  if git -c http.version=HTTP/1.1 pull --ff-only origin "$BRANCH"; then
+    break
+  fi
+
+  if [ "$i" -eq "$PULL_RETRIES" ]; then
+    echo "拉取代码失败，已重试 ${PULL_RETRIES} 次"
+    exit 1
+  fi
+
+  echo "拉取失败，10 秒后重试（第 ${i} 次）"
+  sleep 10
+done
 
 # ==============================
 # 3. 安装项目依赖
@@ -74,14 +91,28 @@ echo "[6/6] 重启应用服务"
 
 sudo -n systemctl restart "$SERVICE_NAME"
 
-# 检查服务状态
-sudo -n systemctl is-active --quiet "$SERVICE_NAME"
+# 等待服务就绪
+# systemctl restart 返回时进程刚启动，端口不一定已经开始监听，
+# 所以不能立即检查，需要循环等待
+echo "等待服务就绪..."
 
-# 检查本机应用是否可以访问
-curl --fail --silent --show-error \
-  --max-time 10 \
-  http://127.0.0.1:3000/ \
-  --output /dev/null
+for i in $(seq 1 "$HEALTH_RETRIES"); do
+  if curl --fail --silent --show-error \
+    --max-time 10 \
+    "$HEALTH_URL" \
+    --output /dev/null 2>/dev/null; then
+    echo "服务已就绪（第 ${i} 次检查）"
+    break
+  fi
+
+  if [ "$i" -eq "$HEALTH_RETRIES" ]; then
+    echo "服务启动超时（等待约 $((HEALTH_RETRIES * 2)) 秒）"
+    echo "请登录服务器查看日志：journalctl -u ${SERVICE_NAME} -n 50 --no-pager"
+    exit 1
+  fi
+
+  sleep 2
+done
 
 echo ""
 echo "======================================"
