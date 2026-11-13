@@ -23,7 +23,7 @@ export default function UsersPage({
         </h2>
 
         <p className="mt-2 text-sm text-muted-foreground">
-          管理平台用户，包括用户资料、账号状态和角色信息。提交
+          管理平台用户，包括用户资料、账号状态和角色信息。提交测试
         </p>
       </div>
 
