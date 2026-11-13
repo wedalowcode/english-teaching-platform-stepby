@@ -98,9 +98,18 @@ export async function UserList({
         </Link>
       </Form>
 
-      <p className="text-sm text-muted-foreground">
-        共 {total} 位用户
-      </p>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <p className="text-sm text-muted-foreground">
+          共 {total} 位用户
+        </p>
+
+        <Link
+          href="/admin/users/new"
+          className={buttonVariants()}
+        >
+          新增用户
+        </Link>
+      </div>
 
       <div className="rounded-md border bg-card">
         <Table>
